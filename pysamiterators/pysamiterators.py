@@ -8,6 +8,8 @@ import numpy as np
 import collections
 import functools
 
+# Global:
+complement = str.maketrans('ATCGN', 'TAGCN')
 
 class ReferenceBackedGetAlignedPairs(object):
     """
@@ -100,6 +102,49 @@ class MatePairIterator():
                     else:
                         return (None, rec)
 
+
+
+
+# For a mapped read pair it is very important to figure out which bases are actual genomic signal
+# Al sequence behind and aligned to the random primer(s) cannot be trusted and should be masked out
+# secondly all signal before the starting location of R1 cannot be trusted
+# This function returns a lower and higher bound of the locations within the fragment that can be trusted
+# ASCII art: (H is primer sequence)
+#           R1 H------------------------>
+#   <------------------HH R2
+
+# Output: (E is emitted)
+#           R1 HEEEEEEE----------------->
+#   <------------------HH R2
+
+def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6):
+
+
+    if  R1 is None or R2 is None or R1.is_unmapped:
+        # This is an annoying situation, we cannot determine what bases can be trusted
+        raise ValueError('Genomic locations cannot be determined')
+    if R2.is_unmapped:
+        # This is an annoying situation, we cannot determine what bases can be trusted
+        raise ValueError('Genomic locations cannot be determined')
+
+    if R1.is_reverse==R2.is_reverse:
+        raise ValueError('Fragment incorrectly mapped') # The fragment is not correctly mapped
+
+    if not R1.is_reverse: # R1 is forward, R2 is reverse
+        #           R1 H------------------------>
+        #   <------------------HH R2
+        start = R1.reference_start+R1PrimerLength
+        end = R2.reference_end -  R2PrimerLength
+    else:
+        #           R2 HH------------------------>
+        #   <------------------HH R1
+        start = R2.reference_start+R2PrimerLength
+        end = R1.reference_end -  R1PrimerLength
+
+    if start>=end:
+        raise ValueError('Fragment has no size')
+
+    return start,end
 
 
 class JumpyMatePairIterator:
