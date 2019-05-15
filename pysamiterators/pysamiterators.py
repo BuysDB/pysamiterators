@@ -8,11 +8,17 @@ import functools
 
 
 class ReferenceBackedGetAlignedPairs(object):
+    """
+    This is a function which works similar to pysam get_aligned_pairs but
+    the difference is that the reference base is fetched from a supplied fasta
+    file. This can be usefull when mapping to a masked genome or when the mapper
+    generated an invalid MD tag.
+    """
     def __init__(self, read, reference, matches_only=False,with_seq=True):
         """Initialise  The iterator.
         Argument(s):
         handle to pysam.AlignmentFile(),
-        handle to pysam.FastaFile(), (Use a cached variant!)
+        handle to pysam.FastaFile(), (Tip: wrap in CachedFasta() )
         """
         self.read = read
         self.matches_only= matches_only
@@ -43,9 +49,10 @@ class MatePairIterator():
     def __init__(self, handle,performProperPairCheck=True, **kwargs):
         """Initialise  The iterator.
 
-        Argument(s):
-        handle to pysam.AlignmentFile(),
-        Keyword arguments: fetch() arguments
+        Args:
+            handle: handle to pysam.AlignmentFile(),
+            **kwargs, arguments passed to fetch()
+
         Example:
         for R1,R2 in MatePairIterator( pysam.AlignmentFile('test.bam'), contig='chr1' )
         """
@@ -263,7 +270,12 @@ def getListSpanningCoordinates(l):
             surfaceEnd=read.reference_end
     return contig,surfaceStart,surfaceEnd
 
+
 class CachedFasta():
+    """
+    Wrapper around pysam.FastaFile, stores the content of one or more chromosomes
+    into ram to allow for faster retrieval
+    """
     def __init__(self, handle, maximumCached=1):
         self.handle = handle
         self.maximumCached=maximumCached
