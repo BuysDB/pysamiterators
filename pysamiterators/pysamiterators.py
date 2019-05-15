@@ -175,14 +175,14 @@ def getReadTotalCycles(read, cycleOffset=None,trimmed_begin_tag_R1='eB', trimmed
 
 
 class ReadCycleIterator():
-""" This iterator is similar and a wrapper of the Pysam get_aligned_pairs function
-The difference is that the cycle of the sequencer is emitted (distToFirstCycle) (int or float)
-yields cycle, queryIndex, referencePos, (refbase)
-The cycle of the sequencer is obtained by the index, the read orientation and two tags which
-store how many bases have been trimmed of from the beginning of R1 and R2. (eB and EB by default)
-The second added feature is that a reference handle can be added which will yield
-reference bases from the supplied fasta file. This feature is neccesary when mapping to masked genomes
-"""
+    """ This iterator is similar and a wrapper of the Pysam get_aligned_pairs function
+    The difference is that the cycle of the sequencer is emitted (distToFirstCycle) (int or float)
+    yields cycle, queryIndex, referencePos, (refbase)
+    The cycle of the sequencer is obtained by the index, the read orientation and two tags which
+    store how many bases have been trimmed of from the beginning of R1 and R2. (eB and EB by default)
+    The second added feature is that a reference handle can be added which will yield
+    reference bases from the supplied fasta file. This feature is neccesary when mapping to masked genomes
+    """
 
     def __init__(self,
         read,
