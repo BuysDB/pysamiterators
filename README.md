@@ -11,8 +11,12 @@ This module contains functions and iterators which help in using Pysam
 
 ### Prerequisites
 
-The only prerequisite is [PySAM](https://github.com/pysam-developers/pysam)
+The only prerequisites are python3.6 or higher and [PySAM](https://github.com/pysam-developers/pysam)
 
+### Installation
+```
+pip3 install https://github.com/BuysDB/pysamiterators/archive/master.zip
+```
 ### Examples
 
 Iteration over R1 and R2:
