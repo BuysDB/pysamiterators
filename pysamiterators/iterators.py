@@ -244,53 +244,6 @@ class ReadCycleIterator():
             return cycle, readIndex, referencePos
 
 
-class JumpyMatePairIterator:
-    """Fast iteration over R1, R2"""
-
-    def __init__(self, handle, **kwargs):
-        """Initialise  The iterator.
-
-        Argument(s):
-        handle to pysam.AlignmentFile(),
-        Keyword arguments: fetch() arguments
-        Example:
-        for R1,R2 in MatePairIterator( pysam.AlignmentFile('test.bam'), contig='chr1' )
-        """
-        self.handle = handle
-        self.iterator = self.handle.fetch(**kwargs)
-        self.cachedR1s = {}
-        self.cachedR2s = {}
-
-    def __iter__(self):
-        """Exectuted upon generator initiation."""
-        return(self)
-
-    def __next__(self):
-        foundR1R2 = False
-        while not foundR1R2:
-            rec = next(self.iterator)
-            if rec.is_paired and rec.is_proper_pair and not rec.is_secondary and not  rec.is_supplementary: # is_proper_pair
-                haveR1 = False
-                haveR2 = False
-                if rec.is_read1:
-                    if rec.query_name in self.cachedR1s:
-                        raise( ValueError("Collision"))
-                    self.cachedR1s[rec.query_name] = rec
-                    haveR1 = True
-
-                    if rec.next_reference_name != rec.reference_name:
-                        # multi chromosome jump
-                        pass
-
-                else:
-                    if rec.query_name in self.cachedR2s:
-                        raise( ValueError("Collision"))
-                    self.cachedR2s[rec.query_name] = rec
-                    haveR2 = True
-                if (haveR1 or rec.query_name in self.cachedR1s) and (
-                    haveR2 or rec.query_name in self.cachedR2s):
-                    return(self.cachedR1s.pop(rec.query_name), self.cachedR2s.pop(rec.query_name))
-
 
 class ReadSource():
 
