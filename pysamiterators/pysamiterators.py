@@ -161,12 +161,12 @@ def getCycleOffset(read, trimmed_begin_tag_R1='eB', trimmed_begin_tag_R2='EB'):
 """Obtain the total amount of cycles for the read,
     including bases which have been trimmed off from the start
 """
-def getReadTotalCycles(read, cycleOffset=None):
+def getReadTotalCycles(read, cycleOffset=None,trimmed_begin_tag_R1='eB', trimmed_begin_tag_R2='EB'):
     # The obvious part:
     totalCycles = read.infer_read_length()
     # Add trimmed cycles:
     if cycleOffset is None:
-        cycleOffset  = getCycleOffset(read)
+        cycleOffset  = getCycleOffset(read, trimmed_begin_tag_R1, trimmed_begin_tag_R2)
     totalCycles += cycleOffset #@warn: end is not defined!
     return totalCycles
 
@@ -176,8 +176,10 @@ class ReadCycleIterator():
 """ This iterator is similar and a wrapper of the Pysam get_aligned_pairs function
 The difference is that the cycle of the sequencer is emitted (distToFirstCycle) (int or float)
 yields cycle, queryIndex, referencePos, (refbase)
-The cycle of the sequencer is obtained by the index, the read orientation and the eB/EB tags
-The second added feature is that a reference handle can be added which will yield reference bases from the supplied fasta file. This feature is neccesary when mapping to masked genomes
+The cycle of the sequencer is obtained by the index, the read orientation and two tags which
+store how many bases have been trimmed of from the beginning of R1 and R2. (eB and EB by default)
+The second added feature is that a reference handle can be added which will yield
+reference bases from the supplied fasta file. This feature is neccesary when mapping to masked genomes
 """
 
     def __init__(self,
@@ -186,14 +188,22 @@ The second added feature is that a reference handle can be added which will yiel
         with_seq=False, # emit reference bases
         emitFloats=False,  # Emit as percentage of total cycles instead of absolute cycles
         reference=None, # obtain reference base from a reference (Should be type pysam FastaFile)
-
+        trimmed_begin_tag_R1='eB',
+        trimmed_begin_tag_R2='EB'
         ):
         self.read = read
+        self.trimmed_begin_tag_R1 = trimmed_begin_tag_R1
+        self.trimmed_begin_tag_R2 = trimmed_begin_tag_R2
         self.with_seq = with_seq
         self.matches_only = matches_only
         self.emitFloats = emitFloats
-        self.start = getCycleOffset(read)
-        self.len = getReadTotalCycles(read, cycleOffset=self.start)
+        self.start = getCycleOffset(read,
+                                    trimmed_begin_tag_R1=trimmed_begin_tag_R1,
+                                    trimmed_begin_tag_R2=trimmed_begin_tag_R2)
+        self.len = getReadTotalCycles(read,
+                                      cycleOffset=self.start,
+                                      trimmed_begin_tag_R1=trimmed_begin_tag_R1,
+                                      trimmed_begin_tag_R2=trimmed_begin_tag_R2)
         self.reference = reference
 
     def __repr__(self):
@@ -201,9 +211,14 @@ The second added feature is that a reference handle can be added which will yiel
 
     def __iter__(self):
         if self.reference is None:
-            self.iterator = iter(self.read.get_aligned_pairs(matches_only=self.matches_only, with_seq=self.with_seq))
+            self.iterator = iter(self.read.get_aligned_pairs(matches_only=self.matches_only,
+            with_seq=self.with_seq))
         else:
-            self.iterator = iter(ReferenceBackedGetAlignedPairs(self.read, self.reference, matches_only=self.matches_only, with_seq=True))
+            self.iterator = iter(
+            ReferenceBackedGetAlignedPairs(self.read,
+                                           self.reference,
+                                           matches_only=self.matches_only,
+                                           with_seq=True))
         return self
 
     def __next__(self):
