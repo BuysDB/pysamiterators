@@ -21,18 +21,18 @@ pip3 install https://github.com/BuysDB/pysamiterators/archive/master.zip
 
 Iteration over R1 and R2:
 ```
-import pysamiterators
+import pysamiterators.iterators as pits
 import pysam
 with  pysam.AlignmentFile('test.bam') as bam:
-    for R1,R2 in pysamiterators.MatePairIterator( bam ):
+    for R1,R2 in pits.MatePairIterator( bam ):
         pass
 ```
 Iteration over R1 and R2, on chromosome 2: (Arguments are passed to pysam.AlignmentFile fetch)
 ```
-import pysamiterators
+import pysamiterators.iterators as pits
 import pysam
 with  pysam.AlignmentFile('test.bam') as bam:
-    for R1,R2 in pysamiterators.MatePairIterator( bam, contig='chr2' ):
+    for R1,R2 in pits.MatePairIterator( bam, contig='chr2' ):
         print(R1,R2)
 ```
 
@@ -40,13 +40,13 @@ Iteration over query and reference base, where the reference base is extracted f
 Make sure the fasta file has been indexed (samtools faidx).
 
 ```
-import pysamiterators
+import pysamiterators.iterators as pits
 import pysam
-reference = pysamiterators.CachedFasta( pysam.FastaFile('test.fasta') )
+reference = pits.CachedFasta( pysam.FastaFile('test.fasta') )
 with  pysam.AlignmentFile('test.bam') as bam:
-    for R1,R2 in pysamiterators.MatePairIterator( bam, contig='chr2' ):
+    for R1,R2 in pits.MatePairIterator( bam, contig='chr2' ):
         break
-    for read_index, reference_pos, reference_base in pysamiterators.ReferenceBackedGetAlignedPairs(R1,
+    for read_index, reference_pos, reference_base in pits.ReferenceBackedGetAlignedPairs(R1,
         reference=reference,
         matches_only=True,
         with_seq=True ):
