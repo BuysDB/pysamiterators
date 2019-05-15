@@ -33,14 +33,16 @@ class ReferenceBackedGetAlignedPairs(object):
         return(f'{self.read}, iterator' )
 
     def __iter__(self):
-        self.iterator = iter(self.read.get_aligned_pairs(matches_only=self.matches_only, with_seq=self.with_seq))
+        self.iterator = iter(self.read.get_aligned_pairs(
+            matches_only=self.matches_only, with_seq=self.with_seq))
         return self
 
     def __next__(self):
         if self.with_seq:
             readIndex, referencePos, referenceBaseByPysam = next(self.iterator)
             if referencePos is not None:
-                referenceBase = self.reference.fetch(self.read.reference_name,referencePos,referencePos+1)
+                referenceBase = self.reference.fetch(self.read.reference_name,
+                    referencePos,referencePos+1)
             return readIndex, referencePos, referenceBase
         else:
             readIndex, referencePos = next(self.iterator)
@@ -285,7 +287,8 @@ class JumpyMatePairIterator:
                         raise( ValueError("Collision"))
                     self.cachedR2s[rec.query_name] = rec
                     haveR2 = True
-                if (haveR1 or rec.query_name in self.cachedR1s) and (haveR2 or rec.query_name in self.cachedR2s):
+                if (haveR1 or rec.query_name in self.cachedR1s) and (
+                    haveR2 or rec.query_name in self.cachedR2s):
                     return(self.cachedR1s.pop(rec.query_name), self.cachedR2s.pop(rec.query_name))
 
 
@@ -378,7 +381,8 @@ class MixedIterator():
         """
         self.handles = handles
         # Yields: handleIndex, read
-        self.iterator = ((i%len(self.handles),v) for i,v in enumerate(itertools.chain(*itertools.zip_longest( *self.handles ) )))
+        self.iterator = ((i%len(self.handles),v) for i,v in enumerate(
+            itertools.chain(*itertools.zip_longest( *self.handles ) )))
         self.depleted=False # if any of the iterators is depleted
         self.stopAtAnyDeplete = True
 
