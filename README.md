@@ -11,7 +11,7 @@ This module contains functions and iterators which help in using Pysam
 
 ### Prerequisites
 
-The only prerequisites are python3.6 or higher and [PySAM](https://github.com/pysam-developers/pysam)
+The only prerequisites are Python 3.6 or higher and [PySAM](https://github.com/pysam-developers/pysam)
 
 ### Installation
 ```
