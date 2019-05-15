@@ -119,7 +119,6 @@ class MatePairIterator():
 
 def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6):
 
-
     if  R1 is None or R2 is None or R1.is_unmapped:
         # This is an annoying situation, we cannot determine what bases can be trusted
         raise ValueError('Genomic locations cannot be determined')
@@ -145,6 +144,87 @@ def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6):
         raise ValueError('Fragment has no size')
 
     return start,end
+
+
+
+def getCycleOffset(read, trimmed_begin_tag_R1='eB', trimmed_begin_tag_R2='EB'):
+
+    start=0
+    if read.is_read1:
+        start = read.get_tag(trimmed_begin_tag_R1) if read.has_tag(trimmed_begin_tag_R1) else 0
+    elif read.is_read2:
+        start = read.get_tag(trimmed_begin_tag_R2) if read.has_tag(trimmed_begin_tag_R2) else 0
+    else:
+        raise ValueError('Designed for single or mate pair only')
+    return (start)
+
+"""Obtain the total amount of cycles for the read,
+    including bases which have been trimmed off from the start
+"""
+def getReadTotalCycles(read, cycleOffset=None):
+    # The obvious part:
+    totalCycles = read.infer_read_length()
+    # Add trimmed cycles:
+    if cycleOffset is None:
+        cycleOffset  = getCycleOffset(read)
+    totalCycles += cycleOffset #@warn: end is not defined!
+    return totalCycles
+
+
+
+class ReadCycleIterator():
+""" This iterator is similar and a wrapper of the Pysam get_aligned_pairs function
+The difference is that the cycle of the sequencer is emitted (distToFirstCycle) (int or float)
+yields cycle, queryIndex, referencePos, (refbase)
+The cycle of the sequencer is obtained by the index, the read orientation and the eB/EB tags
+The second added feature is that a reference handle can be added which will yield reference bases from the supplied fasta file. This feature is neccesary when mapping to masked genomes
+"""
+
+    def __init__(self,
+        read,
+        matches_only=False, # transfered to pysam api
+        with_seq=False, # emit reference bases
+        emitFloats=False,  # Emit as percentage of total cycles instead of absolute cycles
+        reference=None, # obtain reference base from a reference (Should be type pysam FastaFile)
+
+        ):
+        self.read = read
+        self.with_seq = with_seq
+        self.matches_only = matches_only
+        self.emitFloats = emitFloats
+        self.start = getCycleOffset(read)
+        self.len = getReadTotalCycles(read, cycleOffset=self.start)
+        self.reference = reference
+
+    def __repr__(self):
+        return(f'{read}, {self.len} cycles starting at {self.start}' )
+
+    def __iter__(self):
+        if self.reference is None:
+            self.iterator = iter(self.read.get_aligned_pairs(matches_only=self.matches_only, with_seq=self.with_seq))
+        else:
+            self.iterator = iter(ReferenceBackedGetAlignedPairs(self.read, self.reference, matches_only=self.matches_only, with_seq=True))
+        return self
+
+    def __next__(self):
+        if self.with_seq:
+            readIndex, referencePos, referenceBase = next(self.iterator)
+        else:
+            readIndex, referencePos = next(self.iterator)
+        # Obtain cycle:
+        if not self.read.is_reverse:
+            cycle = readIndex+self.start
+        else:
+            cycle = self.len - readIndex - self.start -1 # minus one as the index starts at 0
+        if self.emitFloats:
+            if self.len==0:
+                cycle=0
+            else:
+                cycle /= self.len
+        if self.with_seq:
+            return cycle, readIndex, referencePos, referenceBase
+        else:
+            return cycle, readIndex, referencePos
 
 
 class JumpyMatePairIterator:
