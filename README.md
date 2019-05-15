@@ -11,7 +11,7 @@ This module contains functions and iterators which help in using Pysam
 
 ### Prerequisites
 
-The only prerequisite is [PySAM] https://github.com/pysam-developers/pysam
+The only prerequisite is [PySAM](https://github.com/pysam-developers/pysam)
 
 ### Examples
 
