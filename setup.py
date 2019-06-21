@@ -6,6 +6,8 @@ setup(
 	author_email='code@buysdb.nl',
 	description='Pysam related iterators',
 	url='https://github.com/BuysDB/pysamiterators',
-	py_modules=['pysamiterators'],
+	packages=['pysamiterators',
+        'pysamiterators.iterators'
+        ],
 	install_requires=['pysam']
 )
