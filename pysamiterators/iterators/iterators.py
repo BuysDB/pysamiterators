@@ -119,11 +119,25 @@ class MatePairIterator():
 #           R1 HEEEEEEE----------------->
 #   <------------------HH R2
 
-def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6):
+def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6, allow_unsafe=False):
 
-    if  R1 is None or R2 is None or R1.is_unmapped:
+    if R1 is None and allow_unsafe:
+        if R2.is_reverse: # R1 is forward, R2 is reverse
+            #           ?????????????????????
+            #   <------------------HH R2
+            start = R2.reference_start+R1PrimerLength
+            end = R2.reference_end -  R2PrimerLength
+        else:
+            #           R2 HH------------------------>
+            #   <------------------HH R1
+            start = R2.reference_start+R2PrimerLength
+            end = R2.reference_end -  R1PrimerLength
+        return start,end
+
+    if  (R1 is None and not allow_unsafe) or R2 is None or R1.is_unmapped:
         # This is an annoying situation, we cannot determine what bases can be trusted
         raise ValueError('Genomic locations cannot be determined')
+
     if R2.is_unmapped:
         # This is an annoying situation, we cannot determine what bases can be trusted
         raise ValueError('Genomic locations cannot be determined')
@@ -150,7 +164,8 @@ def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6):
 
 
 def getCycleOffset(read, trimmed_begin_tag_R1='eB', trimmed_begin_tag_R2='EB'):
-
+    if read is None:
+        return None
     start=0
     if read.is_read1:
         start = read.get_tag(trimmed_begin_tag_R1) if read.has_tag(trimmed_begin_tag_R1) else 0
@@ -229,15 +244,21 @@ class ReadCycleIterator():
         else:
             readIndex, referencePos = next(self.iterator)
         # Obtain cycle:
-        if not self.read.is_reverse:
-            cycle = readIndex+self.start
+        if readIndex is None:
+            cycle=None
         else:
-            cycle = self.len - readIndex - self.start -1 # minus one as the index starts at 0
-        if self.emitFloats:
-            if self.len==0:
-                cycle=0
+            if not self.read.is_reverse:
+                cycle = readIndex+self.start
             else:
-                cycle /= self.len
+                #print(self.len, readIndex, self.start )
+
+                cycle = self.len - readIndex - self.start -1 # minus one as the index starts at 0
+
+            if self.emitFloats:
+                if self.len==0:
+                    cycle=0
+                else:
+                    cycle /= self.len
         if self.with_seq:
             return cycle, readIndex, referencePos, referenceBase
         else:
