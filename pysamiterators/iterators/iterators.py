@@ -63,7 +63,10 @@ class MatePairIterator():
         for R1,R2 in MatePairIterator( pysam.AlignmentFile('test.bam'), contig='chr1' )
         """
         self.handle = handle
-        self.iterator = self.handle.fetch(**kwargs)
+        if 'contig' in kwargs:
+            self.iterator = self.handle.fetch(**kwargs)
+        else:
+            self.iterator = iter(self.handle)
         self.cachedR1s = {}
         self.cachedR2s = {}
         self.performProperPairCheck = performProperPairCheck
