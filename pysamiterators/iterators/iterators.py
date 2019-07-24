@@ -40,6 +40,7 @@ class ReferenceBackedGetAlignedPairs(object):
     def __next__(self):
         if self.with_seq:
             readIndex, referencePos, referenceBaseByPysam = next(self.iterator)
+            referenceBase=None
             if referencePos is not None:
                 referenceBase = self.reference.fetch(self.read.reference_name,
                     referencePos,referencePos+1)

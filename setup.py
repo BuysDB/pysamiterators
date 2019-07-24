@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
 	name='pysamiterators',
-	version='1.0',
+	version='1.01',
 	author='Buys de Barbanson',
 	author_email='code@buysdb.nl',
 	description='Pysam related iterators',
