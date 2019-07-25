@@ -11,6 +11,47 @@ import functools
 # Global:
 complement = str.maketrans('ATCGN', 'TAGCN')
 
+def PileIterator(pile):
+    """Obtain all read pairs overlapping with the supplied pileupcolumn
+
+    Args:
+        pile(pysam.pileupcolumn) : Pileup column to extract read pairs from.
+
+    Yields:
+        R1,R2 (list) : Read pairs overlapping the column
+
+    Example:
+        alignments =pysam.AlignmentFile(bamPath)
+        for pc in alignments.pileup(chromosome,pos,pos+1 ):
+            for R1,R2 in PileIterator(pc.pileups):
+                print(R1,R2)
+    """
+    pair_dict = collections.defaultdict(dict) # name->True/False->read
+    for pileupRead in pile:
+        rec = pileupRead.alignment
+        if not rec.is_secondary and not rec.is_supplementary:
+            if not rec.is_proper_pair:
+                if rec.is_read1:
+                    yield (rec, None)
+                else:
+                    yield (None, rec)
+                continue
+
+            pair_dict[rec.query_name][rec.is_read1] = rec
+            if True in pair_dict[rec.query_name] and False in pair_dict[rec.query_name]:
+                R1,R2 = pair_dict[rec.query_name][True], pair_dict[rec.query_name][False]
+                yield R1,R2
+                del pair_dict[rec.query_name]
+    # Obtain all non-matched reads:
+    for query_name, singleton_read in pair_dict.items():
+        is_read1 =  list(singleton_read.keys())[0]
+        rec = list(singleton_read.values())[0]
+        mate = alignments.mate( x.alignment )
+        pair_dict[query_name][mate.is_read1] = mate
+
+        R1,R2 = pair_dict[rec.query_name][True], pair_dict[rec.query_name][False]
+        yield R1,R2
+
 class ReferenceBackedGetAlignedPairs(object):
     """
     This is a function which works similar to pysam get_aligned_pairs but
