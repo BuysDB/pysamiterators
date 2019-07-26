@@ -94,11 +94,14 @@ class ReferenceBackedGetAlignedPairs(object):
 class MatePairIterator():
     """Fast iteration over R1, R2"""
 
-    def __init__(self, handle,performProperPairCheck=True, **kwargs):
+    def __init__(self, handle,performProperPairCheck=True, ignore_collisions=False, **kwargs):
         """Initialise  The iterator.
 
         Args:
-            handle: handle to pysam.AlignmentFile(),
+            handle: handle to pysam.AlignmentFile()
+
+            ignore_collisions(bool) : when a read name is present multiple times for a single mate, do not throw an exception
+
             **kwargs, arguments passed to fetch()
 
         Example:
@@ -133,12 +136,12 @@ class MatePairIterator():
                     haveR2 = False
                     if rec.is_read1:
                         if rec.query_name in self.cachedR1s:
-                            raise( ValueError("Collision"))
+                            raise( ValueError(f"Collision {rec.query_name} is present multiple times as R1"))
                         self.cachedR1s[rec.query_name] = rec
                         haveR1 = True
                     else:
                         if rec.query_name in self.cachedR2s:
-                            raise( ValueError("Collision"))
+                            raise( ValueError(f"Collision  {rec.query_name} is present multiple times as R2"))
                         self.cachedR2s[rec.query_name] = rec
                         haveR2 = True
                     if (haveR1 or rec.query_name in self.cachedR1s) and (haveR2 or rec.query_name in self.cachedR2s):
