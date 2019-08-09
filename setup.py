@@ -1,12 +1,12 @@
 from setuptools import setup
 setup(
 	name='pysamiterators',
-	version='1.03',
+	version='1.04',
 	author='Buys de Barbanson',
 	author_email='code@buysdb.nl',
 	description='Pysam related iterators',
 	url='https://github.com/BuysDB/pysamiterators',
-	download_url='https://github.com/BuysDB/pysamiterators/archive/v1.03.tar.gz',
+	download_url='https://github.com/BuysDB/pysamiterators/archive/v1.04.tar.gz',
 	packages=['pysamiterators','pysamiterators.iterators'
         ],
 	install_requires=['pysam'],
