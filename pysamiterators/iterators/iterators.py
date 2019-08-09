@@ -128,7 +128,8 @@ class MatePairIterator():
         while not foundR1R2:
             rec = next(self.iterator)
             if not rec.is_secondary and not  rec.is_supplementary:
-                if rec.is_proper_pair:
+                # Check if mates are on same chromsome
+                if (not rec.mate_is_unmapped and rec.reference_name ==rec.next_reference_name):
                     haveR1 = False
                     haveR2 = False
                     if rec.is_read1:
