@@ -129,7 +129,20 @@ class MatePairIterator():
     def __next__(self):
         foundR1R2 = False
         while not foundR1R2:
-            rec = next(self.iterator)
+
+            try:
+                rec = next(self.iterator)
+            except StopIteration:
+                if not self.performProperPairCheck:
+                    # yield remains in buffer..
+                    if len(self.cachedR1s):
+                        for query_name in self.cachedR1s:
+                            return (self.cachedR1s.pop(query_name),None)
+                    if len(self.cachedR2s):
+                        for query_name in self.cachedR2s:
+                            return (None,self.cachedR2s.pop(query_name))
+                raise
+
             if not rec.is_secondary and not  rec.is_supplementary:
                 # Check if mates are on same chromsome
                 if (not rec.mate_is_unmapped and rec.reference_name ==rec.next_reference_name):
