@@ -9,7 +9,7 @@ setup(
 	download_url='https://github.com/BuysDB/pysamiterators/archive/v1.06.tar.gz',
 	packages=['pysamiterators','pysamiterators.iterators'
         ],
-	install_requires=['pysam'],
+	install_requires=['pysam', 'numpy'],
 	 keywords = ['mate-pair','pysam','iteration'],
 	license='MIT',
 	classifiers=[
