@@ -91,6 +91,150 @@ class ReferenceBackedGetAlignedPairs(object):
             return readIndex, referencePos
 
 
+def verify_pair(reads,apply_fixes=False):
+
+    if reads[0] is not None and not reads[0].is_read1:
+        if reads[1] is not None and reads[1].is_read1:
+            raise ValueError('Read 1 and read 2 are swapped {reads[0].query_name}')
+        else:
+            if reads[0].is_read2:
+                raise ValueError(f'First read is read 2 {reads[0].query_name}')
+            else:
+                if reads[0].is_paired:
+                    raise ValueError(f'First read is unpaired, but paired bit is set {reads[0].query_name}')
+                else:
+                    pass
+
+    elif reads[1] is not None and not reads[1].is_read2:
+        if reads[0] is not None and reads[0].is_read2:
+            raise ValueError('Read 1 and read 2 are swapped {reads[1].query_name}')
+        else:
+            if reads[1].is_read1:
+                raise ValueError(f'Second read is read 1 {reads[1].query_name}')
+            else:
+                if reads[1].is_paired:
+                    raise ValueError(f'Second read is unpaired, but paired bit is set {reads[1].query_name}')
+                else:
+                    pass
+
+    elif reads[0] is not None and reads[0].is_paired and reads[1] is None:
+        if apply_fixes:
+            reads[0].is_paired = False
+            reads[0].is_read1 = False
+            reads[0].next_reference_name='*'
+            reads[0].next_reference_start=0
+            reads[0].is_proper_pair = False
+        else:
+            raise ValueError('First read has paired bit, but mate is missing')
+
+    elif reads[1] is not None and reads[1].is_paired and reads[0] is None:
+        if apply_fixes:
+            reads[1].is_read2=False
+            reads[1].is_proper_pair = False
+            reads[1].is_paired = False
+            reads[1].next_reference_name='*'
+            reads[1].next_reference_start=0
+            #print(f'disabled pairing of {reads[1].query_name}')
+            #print(reads[1].next_reference_id)
+        else:
+            raise ValueError('Second read has paired bit, but mate is missing')
+
+    if apply_fixes:
+        for read in reads:
+            if read is not None and not read.is_paired:
+                read.is_paired = False
+                read.is_read1 = False
+                read.next_reference_name='*'
+                read.next_reference_start=0
+                read.is_proper_pair = False
+        return reads
+
+
+
+def MatePairIteratorIncludingNonProper(handle, max_frag_size=100_000, verbose=False, performProperPairCheck=False, **kwargs):
+
+
+    def get_disc_pairs(alignments,max_frag_size = 100_000):
+        discord = {}
+        for read in alignments:
+            if read.is_read2 and not read.is_supplementary and not read.is_secondary and ( read.reference_id != read.next_reference_id  or abs( read.next_reference_start - read.reference_start )>max_frag_size ) :
+                discord[read.query_name] = read
+
+        return discord
+
+
+    if verbose:
+        print('Looking for discordant reads..')
+    discord = get_disc_pairs(alignments=handle,max_frag_size=max_frag_size )
+    if verbose:
+        print('Started yielding pairs')
+
+    to_be_paired={}
+    for read in handle.fetch(**kwargs) :
+
+        if read.is_supplementary:
+            if verbose:
+                print(f'dropped supplemental alignment of {read.query_name}')
+            continue
+
+        if read.is_secondary:
+            if verbose:
+                print(f'dropped secondary alignment of {read.query_name}')
+            continue
+
+        if not read.is_paired :
+            pair = [None,None]
+            pair[read.is_read2] = read
+            yield verify_pair(pair, apply_fixes=True )
+            continue
+
+        if read.query_name in discord :
+            if read.is_read1:
+                yield (read, discord[read.query_name])
+            else:
+                if verbose:
+                    print(f'Skipping R2 of read: {read.query_name}')
+            continue
+
+        if read.is_read1 and read.next_reference_id != read.reference_id: # The mate maps to another chromosome, seek when the current read is read1
+            # We could not find the mate, the bam file is corrupted
+            if performProperPairCheck:
+                raise ValueError(f'Mate of {read.query_name} is missing')
+
+            yield verify_pair(( read, None), apply_fixes=True )
+            continue
+
+        if abs( read.next_reference_start - read.reference_start ) > max_frag_size:
+
+            if performProperPairCheck:
+                raise ValueError(f'Mate of {read.query_name} is missing')
+
+            # We could not find the mate, the bam file is corrupted
+            if read.is_read1:
+                yield verify_pair(( read, None), apply_fixes=True )
+            else:
+                yield verify_pair(( None, read), apply_fixes=True )
+            continue
+
+        if read.query_name in to_be_paired:
+            mate = to_be_paired.pop(read.query_name)
+            if read.is_read1:
+                yield read, mate
+            else:
+                yield mate, read
+            continue
+        else:
+            to_be_paired[read.query_name] = read
+    # Empty the to_be_paired buffer:
+    for read in to_be_paired.values():
+        if read.is_read1:
+            yield verify_pair((read,None), apply_fixes=True )
+        else:
+            yield verify_pair((None,read), apply_fixes=True )
+    del to_be_paired
+
+
+
 class MatePairIterator():
     """Fast iteration over R1, R2"""
 
@@ -162,9 +306,9 @@ class MatePairIterator():
                         return(self.cachedR1s.pop(rec.query_name), self.cachedR2s.pop(rec.query_name))
                 elif not self.performProperPairCheck:
                     if rec.is_read1:
-                        return (rec, None)
+                        return verify_pair(( rec, None), apply_fixes=True )
                     else:
-                        return (None, rec)
+                        return verify_pair(( None, rec), apply_fixes=True )
 
 
 
@@ -181,20 +325,22 @@ class MatePairIterator():
 #           R1 HEEEEEEE----------------->
 #   <------------------HH R2
 
-def getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6, allow_unsafe=False):
+def getPairGenomicLocations(R1,R2, R1PrimerLength=0, R2PrimerLength=0, allow_unsafe=False):
 
-    if R1 is None and allow_unsafe:
-        if R2.is_reverse: # R1 is forward, R2 is reverse
-            #           ?????????????????????
-            #   <------------------HH R2
-            start = R2.reference_start+R1PrimerLength
-            end = R2.reference_end -  R2PrimerLength
-        else:
-            #           R2 HH------------------------>
-            #   <------------------HH R1
-            start = R2.reference_start+R2PrimerLength
-            end = R2.reference_end -  R1PrimerLength
-        return start,end
+    if R1PrimerLength==0 and R2PrimerLength==0:
+
+        starts = tuple( read.reference_start for read in (R1, R2) if read is not None and not read.is_unmapped )
+        ends = tuple( read.reference_end for read in (R1, R2) if read is not None and not read.is_unmapped )
+
+        return min( min(starts), min(ends) ), max( max(starts), max(ends) )
+
+
+    if (R1 is None or R1.is_unmapped) and allow_unsafe:
+        return R2.reference_start,R2.reference_end
+
+    if (R2 is None or R2.is_unmapped) and allow_unsafe:
+        return R1.reference_start,R1.reference_end
+
 
     if  (R1 is None and not allow_unsafe) or R2 is None or R1.is_unmapped:
         # This is an annoying situation, we cannot determine what bases can be trusted
