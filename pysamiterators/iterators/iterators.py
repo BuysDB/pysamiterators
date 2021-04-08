@@ -260,6 +260,7 @@ class MatePairIterator():
         self.cachedR2s = {}
         self.performProperPairCheck = performProperPairCheck
         self.prevChromosome = None
+        self.ignore_collisions = ignore_collisions
 
     def __iter__(self):
         """Exectuted upon generator initiation."""
@@ -298,12 +299,12 @@ class MatePairIterator():
                     haveR1 = False
                     haveR2 = False
                     if rec.is_read1:
-                        if rec.query_name in self.cachedR1s:
+                        if not self.ignore_collisions and rec.query_name in self.cachedR1s:
                             raise( ValueError(f"Collision {rec.query_name} is present multiple times as R1"))
                         self.cachedR1s[rec.query_name] = rec
                         haveR1 = True
                     else:
-                        if rec.query_name in self.cachedR2s:
+                        if not self.ignore_collisions and rec.query_name in self.cachedR2s:
                             raise( ValueError(f"Collision  {rec.query_name} is present multiple times as R2"))
                         self.cachedR2s[rec.query_name] = rec
                         haveR2 = True
@@ -460,12 +461,21 @@ class ReadCycleIterator():
         if readIndex is None:
             cycle=None
         else:
-            if not self.read.is_reverse:
-                cycle = readIndex+self.start
-            else:
-                #print(self.len, readIndex, self.start )
 
-                cycle = self.len - readIndex - self.start -1 # minus one as the index starts at 0
+            # R1 ----->
+            #        <---- R2#
+            if self.read.is_read2:
+                if self.read.is_reverse: #R1 on FWD strand case, first base emitted on the refernence is the last cycle
+                    cycle = self.len - readIndex - self.start -1 # minus one as the index starts at 0
+                else:
+                    cycle = readIndex+self.start
+            else:
+                if not self.read.is_reverse:
+                    cycle = readIndex+self.start
+                else:
+                    #print(self.len, readIndex, self.start )
+
+                    cycle = self.len - readIndex - self.start -1 # minus one as the index starts at 0
 
             if self.emitFloats:
                 if self.len==0:
