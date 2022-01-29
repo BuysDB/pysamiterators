@@ -15,7 +15,7 @@ The only prerequisites are Python 3.6 or higher and [PySAM](https://github.com/p
 
 ### Installation
 ```
-pip3 install https://github.com/BuysDB/pysamiterators/archive/master.zip
+pip install pysamiterators
 ```
 ### Examples
 
